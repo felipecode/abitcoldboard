@@ -38,12 +38,14 @@ The table is quoted as `"references"` because that word is reserved in Postgres.
 
 1. Push this repo to GitHub.
 2. Import the repo in Vercel.
-3. Add these environment variables:
+3. Add these environment variables (Production, Preview, and Development). Keep them **Sensitive** — do not use a `NEXT_PUBLIC_` prefix.
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` (service role, never public)
+- `SUPABASE_URL` — **Project URL** from Supabase → Settings → API. It must look like `https://xxxx.supabase.co`. Not the database URI (`postgresql://...`), not the project id alone.
+- `SUPABASE_SERVICE_ROLE_KEY` — `service_role` secret from the same API page
 - `APP_PASSWORD`
 - `SESSION_SECRET` (long random string)
+
+Redeploy after changing env vars.
 
 The password was shared in chat. Change it before the live URL goes to the band.
 
