@@ -181,9 +181,15 @@ export async function updateReferenceCaption(input: {
     .eq("id", row.id)
     .eq("submitter", input.memberId)
     .select("id, image_path, caption, submitter, status, created_at")
-    .single();
+    .maybeSingle();
 
   if (update.error) throw new Error(update.error.message);
+  if (!update.data) {
+    throw new StoreError(
+      "Could not save that caption. Re-run supabase/schema.sql in the Supabase SQL editor.",
+      500,
+    );
+  }
   return update.data as ReferenceRecord;
 }
 
@@ -206,11 +212,17 @@ export async function deleteReference(input: { id: string; memberId: string }): 
 
   const deletion = await supabase
     .from(TABLE)
-    .delete()
+    .delete({ count: "exact" })
     .eq("id", row.id)
     .eq("submitter", input.memberId);
 
   if (deletion.error) throw new Error(deletion.error.message);
+  if (!deletion.count) {
+    throw new StoreError(
+      "Could not delete that image. Re-run supabase/schema.sql in the Supabase SQL editor.",
+      500,
+    );
+  }
 }
 
 export function localFilePath(imagePath: string): string | null {
