@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/app/components/LogoutButton";
 import { getSession } from "@/lib/auth";
+import { MEMBERS } from "@/lib/members";
 
 export default async function HomePage() {
   const session = await getSession();
@@ -34,8 +35,21 @@ export default async function HomePage() {
           href="/board"
           className="flex min-h-24 items-center justify-center rounded-sm bg-foreground px-4 text-center font-display text-xl uppercase tracking-wide text-background"
         >
-          View board
+          All images
         </Link>
+      </div>
+
+      <p className="mt-10 text-xs uppercase tracking-[0.2em] text-muted">Inbox by member</p>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {MEMBERS.map((member) => (
+          <Link
+            key={member.id}
+            href={`/board?member=${member.id}`}
+            className="flex min-h-14 items-center rounded-sm border border-line bg-card px-4 text-lg tracking-wide hover:border-muted"
+          >
+            {member.displayName}
+          </Link>
+        ))}
       </div>
     </main>
   );

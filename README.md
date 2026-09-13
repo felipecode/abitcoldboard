@@ -1,6 +1,6 @@
 # A Bit Cold Visual World
 
-Shared visual inbox for the band. Phase 1: tap your name, upload images, view the board.
+Shared visual inbox for the band. Phase 1: tap your name, upload images, browse all or by member, edit or delete your own.
 
 ## Local
 
@@ -29,10 +29,11 @@ Later you can point `board.abitcold.ca` at Vercel with a CNAME.
 ### Supabase
 
 1. Create a free project.
-2. Run [`supabase/schema.sql`](supabase/schema.sql) in the SQL editor.
-3. Storage → New bucket → name `references` → **private**.
+2. Run [`supabase/schema.sql`](supabase/schema.sql) in the SQL editor. That creates the table, the private `references` bucket, and the policies that let the website insert, update, and delete rows.
 
 The table is quoted as `"references"` because that word is reserved in Postgres.
+
+`SUPABASE_SERVICE_ROLE_KEY` must be the **secret** / `service_role` key, not the publishable / `anon` key. The secret key is the one that can bypass a locked-down database. If you already ran an older schema, run the file again — it is safe to repeat.
 
 ### Vercel
 

@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "crypto";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { getMember } from "@/lib/members";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -120,6 +120,97 @@ export async function createReference(input: {
 
   if (insert.error) throw new Error(insert.error.message);
   return insert.data as ReferenceRecord;
+}
+
+export class StoreError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+async function findReference(id: string): Promise<ReferenceRecord | null> {
+  if (!isSupabaseConfigured()) {
+    return (await readLocal()).find((row) => row.id === id) ?? null;
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("id, image_path, caption, submitter, status, created_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data as ReferenceRecord | null) ?? null;
+}
+
+async function requireOwned(id: string, memberId: string): Promise<ReferenceRecord> {
+  const row = await findReference(id);
+  if (!row) {
+    throw new StoreError("That image is gone.", 404);
+  }
+  if (row.submitter !== memberId) {
+    throw new StoreError("You can only change your own images.", 403);
+  }
+  return row;
+}
+
+export async function updateReferenceCaption(input: {
+  id: string;
+  memberId: string;
+  caption: string | null;
+}): Promise<ReferenceRecord> {
+  const row = await requireOwned(input.id, input.memberId);
+
+  if (!isSupabaseConfigured()) {
+    const rows = await readLocal();
+    const next = rows.map((item) =>
+      item.id === row.id ? { ...item, caption: input.caption } : item,
+    );
+    await writeLocal(next);
+    return { ...row, caption: input.caption };
+  }
+
+  const supabase = getSupabase();
+  const update = await supabase
+    .from(TABLE)
+    .update({ caption: input.caption })
+    .eq("id", row.id)
+    .eq("submitter", input.memberId)
+    .select("id, image_path, caption, submitter, status, created_at")
+    .single();
+
+  if (update.error) throw new Error(update.error.message);
+  return update.data as ReferenceRecord;
+}
+
+export async function deleteReference(input: { id: string; memberId: string }): Promise<void> {
+  const row = await requireOwned(input.id, input.memberId);
+
+  if (!isSupabaseConfigured()) {
+    const filePath = localFilePath(row.image_path);
+    if (filePath) {
+      await unlink(filePath).catch(() => undefined);
+    }
+    const rows = (await readLocal()).filter((item) => item.id !== row.id);
+    await writeLocal(rows);
+    return;
+  }
+
+  const supabase = getSupabase();
+  const removed = await supabase.storage.from(BUCKET).remove([row.image_path]);
+  if (removed.error) throw new Error(removed.error.message);
+
+  const deletion = await supabase
+    .from(TABLE)
+    .delete()
+    .eq("id", row.id)
+    .eq("submitter", input.memberId);
+
+  if (deletion.error) throw new Error(deletion.error.message);
 }
 
 export function localFilePath(imagePath: string): string | null {
